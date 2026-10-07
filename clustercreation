@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+az version
+
+azurecluter() {
+    login=$(az login --use-device-code)
+    az account show
+    accountconfirmation=$(az account show | grep -o "name")
+    if [[ $login ]] && [[ -n "$accountconfirmation" ]]; then
+        echo "positive $accountconfirmation"
+        echo "the input after this create a resource group and set loaction to east USA."
+        echo "naming input can be empty or be a empy string"
+        while :;
+        do
+            read -p "enter name for creation of resource-group: " resourcename
+            checkresourcename=$(az group exists --name $resourcename)
+            getresourcename=$(az group list --output table)
+            echo "available resource group names $checkresourcename"
+            if [[ $checkresourcename != true ]] && [[ -n "$resourcename" ]];then
+                setresourcename="$resourcename"
+                echo "this is your resource name $setresourcename"
+                az group create --name $setresourcename --location eastus
+                # break
+    
+            elif [[ -n "$resourcename" ]] && [[ $checkresourcename=true ]]; then
+                setresourcename2="$resourcename"
+                echo "this is your resource name right here $setresourcename2"
+                echo "resource name is true and it exist already please kindly go ahead to create you cluster or swicth to one"
+                echo "enter in the available option"
+                echo "option 1 => to create cluster enter 1"
+                echo "opyion 2 => to switch clusters or activate cluster enter 2"
+                read -p "enter the available option above for further process: " option
+                case $option in
+                    1)
+                        while :;
+                        do
+                            read -p "enter in your cluster name either for creation or for cluster-switch: " Clustername
+                            echo "you just entered in $Clustername as you Cluster name. processing..."
+                            myclust=$(az aks list --output table | grep -o $Clustername)
+                            if [[ -z "$myclust" ]];then
+                                if az aks create --resource-group $setresourcename2 --name $Clustername --node-count 1 --node-vm-size Standard_D2s_v7 --enable-addons monitoring --generate-ssh-keys ;then
+                                    az aks get-credentials --resource-group $setresourcename2 --name $Clustername
+                                    echo "successful"
+                                    echo "this are your available clusters"
+                                    az aks list --output table
+                                    break
+                                fi
+                            elif [[ -n "$myclust" ]]; then
+                                echo "cluster name already exist, please try swichting to a new cluster or progress with the current cluster you are in"
+                            else
+                                echo "something went wrong somewhere"
+                            fi
+                        done
+                        ;;
+                    2)
+                        echo "this are the available clusters"
+                        availablecluster=$(az aks list --output table)
+                        while :;
+                        do
+                            read -p "enter existing cluster name: " clusternames
+                            read -p "enter in existing resource group: " resource
+                            az aks list --output table
+                            if [[ $(az group exists --resource-group "$resource") = "true" ]] && [[ $(az aks show --resource-group "$resource" --name "$clusternames" --query "name" -o tsv) ]];then
+                                az aks get-credentials --resource-group "$resource" --name "$clusternames"
+                                kubectl config use-context $clusternames
+                                echo "this became successful"
+                                kubectl config get-contexts
+                                break
+                            else
+                                echo "cluster name does not exist, please check that the cluster exist and check for any mis-spellings"
+                            fi
+                        done
+                        ;;
+                    *)
+                        echo "this option does not exist"
+                esac
+
+            else
+                echo "please make sure your resource name is not a empty strip and make sur that the input doe not match the name in the available resource names"
+            fi
+        done
+    else
+        echo "negative"
+    fi
+}
+
+azurecluter
+
+
+# acrcreaion(){
+#     echo "this fuction is to create an ACR"
+#     availablerg=$(az aks list --query "name" -o table)
+#     while :;
+#     do
+#         read -p "enter the available resource group for creation: " myresourceg
+#         read -p "enter in you existing cluster name also: " clustnaming
+#         if [[ $(az group exists --resource-group $myresourceg) ]] && [[ $(az aks show -g $myresourceg --name $clustnaming --query "name" -o tsv) ]];then
+#             echo "the resource group '$myresourceg' exist and so does the clustername '$clustnaming'"
+#             read -p "enter a unique ACR name: " Acrname
+#             if [[ -n "$Acrname" ]] && [[ ! $(az acr list -g $myresourceg --query "[0].name" -o tsv) ]]; then
+#                 echo "creating ACR..."
+#                 if az acr create -g $myresourceg --name $Acrname --sku Basic ;then
+#                     echo "attaching directly to the cluster using Azure management Identity...."
+#                     az aks update -g $myresourceg --name $clustnaming --attach-acr $Acrname
+#                     echo "done with attachment"
+#                     break
+#                 else
+#                     echo "nothing happened"
+#                 fi
+#             else
+#                 echo "either Acr is not a string or Acr already exist"
+#                 az acr list -g $myresourceg -o table
+#             fi
+#         else 
+#             echo "please ensure to check you are inputing the right in for correctly"
+#         fi
+#     done
+# }
+
+
+
+# acrcreaion

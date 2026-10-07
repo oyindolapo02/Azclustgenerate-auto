@@ -1,0 +1,2 @@
+# Azurescriptsclust-automation
+# Azclustgenerate-auto
